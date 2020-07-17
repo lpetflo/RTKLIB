@@ -1094,18 +1094,18 @@ extern int rtksvrmark(rtksvr_t *svr, const char *name, const char *comment)
     char buff[MAXSOLMSG+1],tstr[32],*p,*q;
     double tow,pos[3];
     int i,sum,week;
-    
-    tracet(4,"rtksvrmark:name=%s comment=%s\n",name,comment);
+	
+	tracet(4,"rtksvrmark:name=%s comment=%s\n",name,comment);
     
     if (!svr->state) return 0;
     
     rtksvrlock(svr);
-    
-    time2str(svr->rtk.sol.time,tstr,3);
+	
+	time2str(svr->rtk.sol.time,tstr,3);
     tow=time2gpst(svr->rtk.sol.time,&week);
     ecef2pos(svr->rtk.sol.rr,pos);
-    
-    for (i=0;i<2;i++) {
+	
+	for (i=0;i<2;i++) {
         p=buff;
         if (svr->solopt[i].posf==SOLF_STAT) {
             p+=sprintf(p,"$MARK,%d,%.3f,%d,%.4f,%.4f,%.4f,%s,%s\n",week,tow,
@@ -1125,15 +1125,17 @@ extern int rtksvrmark(rtksvr_t *svr, const char *name, const char *comment)
                        comment);
         }
         strwrite(svr->stream+i+3,(unsigned char *)buff,p-buff);
-        saveoutbuf(svr,(unsigned char *)buff,p-buff,i);
+        /*saveoutbuf(svr,(unsigned char *)buff,p-buff,i);*/ /* caused program to get stuck when running method from rtkrcv*/
     }
-    if (svr->moni) {
+	
+	if (svr->moni) {
         p=buff;
         p+=sprintf(p,"%s MARK: %s,%s,%.9f,%.9f,%.4f,%d,%s\n",COMMENTH,
                    name,tstr,pos[0]*R2D,pos[1]*R2D,pos[2],svr->rtk.sol.stat,
                    comment);
         strwrite(svr->moni,(unsigned char *)buff,p-buff);
     }
+	
     rtksvrunlock(svr);
     return 1;
 }
