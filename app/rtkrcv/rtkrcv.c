@@ -37,6 +37,8 @@
 *           2017/09/01 1.21 add command ssr
 *-----------------------------------------------------------------------------*/
 #include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
 #include <signal.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -155,6 +157,7 @@ static const char *helptxt[]={
     "load [file]           : load options from file",
     "save [file]           : save options to file",
     "log [file|off]        : start/stop log to file",
+	"mark [name] [comment] : set marker at current position",
     "help|? [path]         : print help",
     "exit|ctr-D            : logout console (only for telnet)",
     "shutdown              : shutdown rtk server",
@@ -490,7 +493,7 @@ static void stopsvr(vt_t *vt)
     
     if (!svr.state) return;
     
-    /* read stop commads from command files */
+    /* read stop commands from command files */
     for (i=0;i<3;i++) {
         if (!*rcvcmds[i]) continue;
         if (!readcmd(rcvcmds[i],s[i],1)) {
@@ -1302,6 +1305,39 @@ static void cmd_log(char **args, int narg, vt_t *vt)
     }
     vt_printf(vt,"log on: %s\n",args[1]);
 }
+/* mark command ---------------------------------------------------------------*/
+static void cmd_mark(char **args, int narg, vt_t *vt)
+{
+	char mark_name[50];
+	char mark_comment[200];
+	
+	trace(3,"cmd_mark:\n");
+	
+	if (narg==1) {
+        vt_printf(vt,"specify marker name\n");
+		vt_gets(vt,mark_name,sizeof(mark_name));
+		vt_printf(vt,"specify marker comment\n");
+		vt_gets(vt,mark_comment, sizeof(mark_comment));
+    }
+	else if (narg==3) {
+        strcpy(mark_name,args[1]);
+		strcpy(mark_comment,args[2]);
+    }
+	else {
+		vt_printf(vt,"the number of arguments doesn't meet the requirements\n");
+        return;
+    }
+    
+	/* set mark in solution file */
+    if (!rtksvrmark(&svr, mark_name, mark_comment)) {
+        trace(2,"marker could not be set\n");
+        vt_printf(vt,"marker could not be set\n");
+    }
+	else{
+		vt_printf(vt,"%s set with comment: %s\n",mark_name, mark_comment);
+	}
+	
+}
 /* help command --------------------------------------------------------------*/
 static void cmd_help(char **args, int narg, vt_t *vt)
 {
@@ -1345,6 +1381,7 @@ static void *con_thread(void *arg)
     const char *cmds[]={
         "start","stop","restart","solution","status","satellite","observ",
         "navidata","stream","ssr","error","option","set","load","save","log",
+		"mark",
         "help","?","exit","shutdown",""
     };
     con_t *con=(con_t *)arg;
@@ -1407,12 +1444,13 @@ static void *con_thread(void *arg)
             case 13: cmd_load     (args,narg,con->vt); break;
             case 14: cmd_save     (args,narg,con->vt); break;
             case 15: cmd_log      (args,narg,con->vt); break;
-            case 16: cmd_help     (args,narg,con->vt); break;
+			case 16: cmd_mark      (args,narg,con->vt); break;
             case 17: cmd_help     (args,narg,con->vt); break;
-            case 18: /* exit */
+            case 18: cmd_help     (args,narg,con->vt); break;
+            case 19: /* exit */
                 if (con->vt->type) con->state=0;
                 break;
-            case 19: /* shutdown */
+            case 20: /* shutdown */
                 if (!strcmp(args[0],"shutdown")) {
                     vt_printf(con->vt,"rtk server shutdown ...\n");
                     sleepms(1000);
